@@ -10,7 +10,7 @@ batch x, uq, v, w, uhat, n
 
 outputs flux, source, fbouhdg, mass, forloop, initu 
 
-datatype dstype
+datatype double
 
 function conductivity(uq, w, v, x, time, mu, eta)
   output_size(kappa) = 1;

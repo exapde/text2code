@@ -2,3 +2,4 @@
 build/
 lib/
 include/
+examples/code2cpp
