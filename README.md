@@ -1,7 +1,9 @@
 # text2code
 
 cd text2code 
+
 mkdir build
+
 cd build
 
 cmake .. \
