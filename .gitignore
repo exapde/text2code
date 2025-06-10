@@ -7,3 +7,4 @@ examples/code2cpp
 # Ignore all .cpp and .h files in examples/ directory only
 examples/*.cpp
 examples/*.h
+examples/*.hpp
