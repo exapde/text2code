@@ -1,0 +1,71 @@
+scalars time, a, b, c, d, e
+
+vectors x(2), uq(3), v(0), w(1), uhat(1), n(2), tau(1), mu(2), eta(0)
+
+jacobian uq, w, uhat 
+
+hessian uq
+
+batch x, uq, v, w, uhat, n
+
+outputs flux, source, fbouhdg, mass, forloop, initu 
+
+datatype dstype
+
+function conductivity(uq, w, v, x, time, mu, eta)
+  output_size(kappa) = 1;
+  kappa[0] = mu[0]*(2 + uq[0]*uq[0] + tanh(uq[0]));
+end
+
+function flux(uq, w, v, x, time, mu, eta)  
+  output_size(f) = 2;
+  kappa = conductivity(uq, w, v, x, time, mu, eta);
+  f[0] = kappa[0]*uq[1];
+  f[1] = kappa[0]*uq[2];  
+end
+
+function forloop(uq, w, v, x, time, mu, eta)
+  output_size(f) = 3;
+  for i in 0:2 
+    f[i] = uq[i] * x[0] * x[1];
+  endfor    
+end
+
+function mass(uq, w, v, x, time, mu, eta)
+  output_size(f) = 1;
+  matrix A(2,2);
+  A[0][0] = uq[1]*uq[1];
+  A[0][1] = uq[0];
+  A[1][0] = uq[0];
+  A[1][1] = uq[2]*uq[2];  
+  f[0] = det(A);
+end
+
+function source(uq, w, v, x, time, mu, eta)
+  output_size(f) = 1;
+  x1 = x[0];
+  x2 = x[1];
+  f[0] = x1*sin(x2)*sin(pi*time);
+end
+
+function fbouhdg(uq, w, v, x, time, mu, eta, uhat, n, tau)
+  output_size(fb) = 2;
+  fb[0] = tau[0]*(mu[1] - uhat[0]);
+  f = flux(uq, w, v, x, time, mu, eta);
+  fb[1] = f[0]*n[0] + f[1]*n[1] + tau[0]*(uq[0]-uhat[0]);  
+end
+
+
+function initu(x)
+  output_size(f) = 2;
+  f[0] = x[0]*x[0] + x[1];
+  f[1] = x[0]*x[0] - x[1];
+end
+
+
+
+
+
+
+
+

@@ -1,0 +1,21 @@
+scalars time
+
+vectors x(2), y(2)
+
+jacobian x, y
+
+hessian x
+
+batch x, y
+
+outputs func
+
+datatype double
+
+function func(x, y)
+  output_size(f) = 2;
+  f[0] = x[0]*x[0] + x[1] + exp(2*y[0]);
+  f[1] = x[0]*x[0] - x[1] + exp(4*y[1]);  
+end
+
+
