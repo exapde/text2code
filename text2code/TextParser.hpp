@@ -25,6 +25,7 @@ struct ParsedSpec {
     std::vector<std::string> batch;
     std::vector<std::string> outputs;
     std::string datatype;
+    std::string framework;
     std::vector<FunctionDef> functions;
 };
 
@@ -104,6 +105,8 @@ public:
                         spec.outputs = tokens;
                     } else if (key == "datatype") {
                         spec.datatype = value;
+                    } else if (key == "framework") {
+                        spec.framework = value;    
                     }
                 }
             }

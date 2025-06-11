@@ -28,7 +28,15 @@ int main(int argc, char* argv[]) {
         gen.generateSymbolicFunctionsHpp("SymbolicFunctions.hpp");
         gen.generateSymbolicFunctionsCpp("SymbolicFunctions.cpp");        
         gen.generateSymbolicScalarsVectorsHpp("SymbolicScalarsVectors.hpp");
-        gen.generateSymbolicScalarsVectorsCpp("SymbolicScalarsVectors.cpp");
+        gen.generateSymbolicScalarsVectorsCpp("SymbolicScalarsVectors.cpp");   
+        
+        std::string framework = spec.framework;
+        if ((framework == "Cuda") || (framework == "CUDA") || (framework == "cuda")) {
+          gen.generateCudaHipHpp("CudaHip.hpp");
+        } 
+        else if ((framework == "Hip") || (framework == "HIP") || (framework == "hip")) {
+          gen.generateCudaHipHpp("CudaHip.hpp");
+        } 
 
         std::cout << "The C++ code is generated in the following files:\n";
         std::cout << "    Code2Cpp.cpp\n";

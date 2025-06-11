@@ -12,6 +12,8 @@ outputs flux, source, fbouhdg, mass, forloop, initu
 
 datatype double
 
+framework kokkos
+
 function conductivity(uq, w, v, x, time, mu, eta)
   output_size(kappa) = 1;
   kappa[0] = mu[0]*(2 + uq[0]*uq[0] + tanh(uq[0]));
@@ -54,7 +56,6 @@ function fbouhdg(uq, w, v, x, time, mu, eta, uhat, n, tau)
   f = flux(uq, w, v, x, time, mu, eta);
   fb[1] = f[0]*n[0] + f[1]*n[1] + tau[0]*(uq[0]-uhat[0]);  
 end
-
 
 function initu(x)
   output_size(f) = 2;

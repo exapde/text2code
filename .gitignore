@@ -8,3 +8,4 @@ examples/code2cpp
 examples/*.cpp
 examples/*.h
 examples/*.hpp
+*.cpp~

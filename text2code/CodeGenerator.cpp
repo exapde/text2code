@@ -29,6 +29,42 @@ void CodeGenerator::generateCode2Cpp(const std::string& filename) const {
     os.close();  
 }
 
+void CodeGenerator::generateCudaHipHpp(const std::string& filename) const {  
+  std::ofstream os(filename);
+  
+  os << "#pragma once\n\n";
+  os << "#include <string>\n\n";
+  os << "#if defined(__HIPCC__)\n";
+  os << "  #include <hip/hip_runtime.h>\n";
+  os << "  #define GPU_DEVICE __device__\n";
+  os << "  #define GPU_GLOBAL __global__\n";
+  os << "  #define gpuDeviceSynchronize hipDeviceSynchronize\n";
+  os << "  #define GPU_BACKEND \"HIP\"\n";
+  os << "#elif defined(__CUDACC__)\n";
+  os << "  #include <cuda_runtime.h>\n";
+  os << "  #define GPU_DEVICE __device__\n";
+  os << "  #define GPU_GLOBAL __global__\n";
+  os << "  #define gpuDeviceSynchronize cudaDeviceSynchronize\n";
+  os << "  #define GPU_BACKEND \"CUDA\"\n";
+  os << "#else\n";
+  os << "  #error \"GPU backend not recognized. Use nvcc or hipcc.\"\n";
+  os << "#endif\n\n";
+  os << "#define GPU_LAMBDA [=] GPU_DEVICE\n\n";
+  os << "template <typename Functor>\n";
+  os << "GPU_GLOBAL void lambda_kernel(Functor f, size_t N) {\n";
+  os << "    size_t i = blockIdx.x * blockDim.x + threadIdx.x;\n";
+  os << "    if (i < N) f(i);\n";
+  os << "}\n\n";
+  os << "template <typename Functor>\n";
+  os << "void parallel_for(const std::string& label, size_t N, Functor f, int blockSize = 256) {\n";
+  os << "    int numBlocks = (N + blockSize - 1) / blockSize;\n";
+  os << "    lambda_kernel<<<numBlocks, blockSize>>>(f, N);\n";
+  os << "    gpuDeviceSynchronize();\n";
+  os << "}\n";
+  
+  os.close();  
+}
+
 void CodeGenerator::generateSymbolicFunctionsHpp(const std::string& filename) const {
     std::ofstream os(filename);
     os << "#pragma once\n\n";
@@ -800,6 +836,48 @@ void emitfuncjachess2cse(std::ostream& os) {
        << "}\n\n";
 }
 
+void forloopstart(std::ostream& os, std::string framework)
+{       
+    if ((framework == "kokkos") || (framework == "Kokkos") || (framework == "KOKKOS")) {    
+      os << "    cppfile << \"  Kokkos::parallel_for(\\\"\"<< funcnames[functionid] <<\"\\\", N, KOKKOS_LAMBDA(const size_t i) {\\n\";\n";                  
+    }        
+    else if ((framework == "cuda") || (framework == "Cuda") || (framework == "CUDA")) {    
+      os << "    cppfile << \"  parallel_for(\\\"\"<< funcnames[functionid] <<\"\\\", N, GPU_LAMBDA(const size_t i) {\\n\";\n";                  
+    }        
+    else if ((framework == "hip") || (framework == "Hip") || (framework == "HIP")) {    
+      os << "    cppfile << \"  parallel_for(\\\"\"<< funcnames[functionid] <<\"\\\", N, GPU_LAMBDA(const size_t i) {\\n\";\n";                  
+    }        
+    else {
+      os << "    cppfile << \"  for (int i = 0; i < N; ++i) {\\n\";\n";   
+    }
+}
+
+void forloopend(std::ostream& os, std::string framework)
+{       
+    if ((framework == "kokkos") || (framework == "Kokkos") || (framework == "KOKKOS")) {    
+      os << "    cppfile << \"  });\\n\";\n";
+    }
+    else if ((framework == "cuda") || (framework == "Cuda") || (framework == "CUDA")) {       
+      os << "    cppfile << \"  });\\n\";\n";
+    }
+    else if ((framework == "hip") || (framework == "Hip") || (framework == "HIP")) {        
+      os << "    cppfile << \"  });\\n\";\n";
+    }
+    else {
+      os << "    cppfile << \"  }\\n\";\n";   
+    }
+}
+
+void emitCudaHipHpp(std::ostream& os, std::string framework)
+{
+    if ((framework == "cuda") || (framework == "Cuda") || (framework == "CUDA")) {             
+      os << "    hfile << \"#include \\\"CudaHip.hpp\\\" \\n\\n\";\n";
+    }
+    else if ((framework == "hip") || (framework == "Hip") || (framework == "HIP")) {        
+      os << "    hfile << \"#include \\\"CudaHip.hpp\\\" \\n\\n\";\n";
+    }  
+}
+
 void emitfunc2cppfiles(std::ostream& os, const ParsedSpec& spec) {
   
     os << "void SymbolicScalarsVectors::func2cppfiles(const std::vector<Expression> &f, const int functionid) {\n";
@@ -823,6 +901,7 @@ void emitfunc2cppfiles(std::ostream& os, const ParsedSpec& spec) {
     os << "    // Generate function prototype header based on functionid\n";
     os << "    std::ofstream hfile(funcnames[functionid] + std::string(\".h\"));\n";
     os << "    hfile << \"#pragma once\\n\\n\";\n";
+    emitCudaHipHpp(os, spec.framework);
     os << "    hfile << funcdecls[functionid] << \";\\n\";\n";
     os << "    hfile.close();\n";
     os << "\n\n";
@@ -833,11 +912,13 @@ void emitfunc2cppfiles(std::ostream& os, const ParsedSpec& spec) {
     os << "    cppfile << \"#include <cmath>\\n\\n\";\n";
     os << "    cppfile << funcdecls[functionid] << \"\\n\";\n";    
     os << "    cppfile << \"{\\n\\n\";";
-    os << "\n\n";
-    
+    os << "\n\n";        
+
     os << "    std::vector<std::pair<std::string, std::vector<Expression>>> inputs = inputvectors[functionid];\n";
     os << "    C99CodePrinter cpp;\n";
-    os << "    cppfile << \"  for (int i = 0; i < N; ++i) {\\n\";\n";
+    
+    //os << "    cppfile << \"  for (int i = 0; i < N; ++i) {\\n\";\n";
+    forloopstart(os, spec.framework);    
     os << "    \n";
     os << "    // Emit symbolic variable loads\n";
     os << "    for (const auto &[name, vec] : inputs) {\n";
@@ -872,8 +953,10 @@ void emitfunc2cppfiles(std::ostream& os, const ParsedSpec& spec) {
     os << "        cppfile << \"    f[\" << n << \" * N + i] = \" << cpp.apply(*reduced_exprs[n]) << \";\\n\";\n";
     os << "    }\n";
     os << "    \n";
-    os << "    cppfile << \"  }\\n\";\n";
-    os << "    cppfile << \"}\\n\\n\";\n";
+    //os << "    cppfile << \"  }\\n\";\n";  // forloop
+    forloopend(os, spec.framework);
+    
+    os << "    cppfile << \"}\\n\\n\";\n"; // function 
     os << "    cppfile.close();\n";
     os << "}\n\n";
     
@@ -951,8 +1034,9 @@ void emitfuncjac2cppfiles(std::ostream& os, const ParsedSpec& spec) {
     
     os << "    std::vector<std::pair<std::string, std::vector<Expression>>> inputs = inputvectors[functionid];\n";
     os << "    C99CodePrinter cpp;\n";    
-    os << "    cppfile << \"  for (int i = 0; i < N; ++i) {\\n\";\n\n";
-
+    
+    //os << "    cppfile << \"  for (int i = 0; i < N; ++i) {\\n\";\n\n";
+    forloopstart(os, spec.framework);    
     os << "    for (const auto &[name, vec] : inputs) {\n";
     os << "        for (size_t j = 0; j < vec.size(); ++j) {\n";
     os << "            if (depends_on(vec[j]))\n";
@@ -998,9 +1082,10 @@ void emitfuncjac2cppfiles(std::ostream& os, const ParsedSpec& spec) {
     os << "        for (size_t j = 0; j < reduced_exprs_J[k].size(); ++j) {\n";
     os << "            cppfile << \"    J\" << (k+1) << \"[\" << j << \" * N + i] = \" << cpp.apply(*reduced_exprs_J[k][j]) << \";\\n\";\n";
     os << "        }\n";
-    os << "    }\n";
+    os << "    }\n";    
+    //os << "    cppfile << \"  }\\n\";\n";
+    forloopend(os, spec.framework);
     
-    os << "    cppfile << \"  }\\n\";\n";
     os << "    cppfile << \"}\\n\\n\";\n";
     os << "    cppfile.close();\n";
     os << "}\n\n";
@@ -1057,8 +1142,9 @@ void emitfuncjachess2cppfiles(std::ostream& os, const ParsedSpec& spec) {
 
     os << "    std::vector<std::pair<std::string, std::vector<Expression>>> inputs = inputvectors[functionid];\n";
     os << "    C99CodePrinter cpp;\n";    
-    os << "    cppfile << \"  for (int i = 0; i < N; ++i) {\\n\";\n\n";
-
+    
+    //os << "    cppfile << \"  for (int i = 0; i < N; ++i) {\\n\";\n\n";
+    forloopstart(os, spec.framework);    
     os << "    for (const auto &[name, vec] : inputs) {\n";
     os << "        for (size_t j = 0; j < vec.size(); ++j) {\n";
     os << "            if (depends_on(vec[j]))\n";
@@ -1117,9 +1203,10 @@ void emitfuncjachess2cppfiles(std::ostream& os, const ParsedSpec& spec) {
     os << "        for (size_t j = 0; j < reduced_exprs_H[k].size(); ++j) {\n";
     os << "            cppfile << \"    H\" << (k+1) << \"[\" << j << \" * N + i] = \" << cpp.apply(*reduced_exprs_H[k][j]) << \";\\n\";\n";
     os << "        }\n";
-    os << "    }\n";
+    os << "    }\n";    
+    //os << "    cppfile << \"  }\\n\";\n";
+    forloopend(os, spec.framework);
     
-    os << "    cppfile << \"  }\\n\";\n";
     os << "    cppfile << \"}\\n\\n\";\n";
     os << "    cppfile.close();\n";
     os << "}\n\n";

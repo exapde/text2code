@@ -12,6 +12,8 @@ outputs func
 
 datatype double
 
+framework C++
+
 function func(x, y)
   output_size(f) = 2;
   f[0] = x[0]*x[0] + x[1] + exp(2*y[0]);

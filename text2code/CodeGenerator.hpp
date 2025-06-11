@@ -10,6 +10,7 @@ public:
     void generateSymbolicFunctionsCpp(const std::string& filename) const;
     void generateSymbolicScalarsVectorsHpp(const std::string& filename) const;
     void generateSymbolicScalarsVectorsCpp(const std::string& filename) const;
+    void generateCudaHipHpp(const std::string& filename) const;
     
 private:
     const ParsedSpec& spec;
